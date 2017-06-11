@@ -1,43 +1,45 @@
 # -*- coding: utf-8 -*-
-# Python 3.6
-# Various_scripts | web_scrapper_schedule
-# 10.06.2017 Tomasz Wisniewski
 """
-web_scrapper_schedule:
+    schedule_scraper.py
+
     Script scrapes web page content for schedule.
 
-    requirements:
-    requests
-    BeautifulSoup
+    Python 3.6
+    10.06.2017 Tomasz Wisniewski
 """
 import time
 import requests
-import re
 from bs4 import BeautifulSoup
-from collections import Counter
 
+
+# ------------ measure time
 t0 = time.clock()
 
-
-# time table
 def calculate_top_cord_for_hour(h, top_cord, top_jump):
+    """
+    Calculates coordinates from scraped data.
+
+    :param h: full hour
+    :param top_cord: initial value for top variable (scraped from website)
+    :param top_jump: height difference between nodes
+    :return: list with tuples (coordinates, time)
+    """
     tab = []
     time_str = ''
     time_cod = 0
 
     for i in range(4):
         if i % 4 == 0:
-            time_str = str(h) + ':' + str(i * 15)
-            time_str = '{:2}:{}'.format((str(h)), str(i * 15))  # TODO
+            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))  
             time_cod = top_cord
         if i % 4 == 1:
-            time_str = str(h) + ':' + str(i * 15)
+            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))
             time_cod = top_cord + top_jump
         if i % 4 == 2:
-            time_str = str(h) + ':' + str(i * 15)
+            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))
             time_cod = top_cord + 2 * top_jump
         if i % 4 == 3:
-            time_str = str(h) + ':' + str(i * 15)
+            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))
             time_cod = top_cord + 3 * top_jump
 
         tab.append([time_cod, time_str])
@@ -47,6 +49,10 @@ def calculate_top_cord_for_hour(h, top_cord, top_jump):
 
 
 def create_time_table():
+    """
+    Creates time table as dictionary.
+    :return: dictionary with time intervals (15 min)
+    """
     time_table = {}
     hour = 8  # 8:00
     hour_last = 22  # last hour 21:00
@@ -61,6 +67,7 @@ def create_time_table():
     return time_table
 
 
+# legend
 teachers = { 'MCh': 'Marcin Cholewa',
              'ASa': 'Arkadiusz Sacewicz',
              'PP' : 'Piotr Paszek',
@@ -68,16 +75,24 @@ teachers = { 'MCh': 'Marcin Cholewa',
              'MB' : 'Barbara M. Paszek',
              'MaPa' : 'Małgorzata Pałys',
              'LA' : 'Aleksander Lamża',
+             'TK' : 'Katarzyna Trynda',
+             'KP' : 'Przemysław Kudłacik',
+             'EK-W' : 'Ewa Karolczak-Wawrzała',
+
              }
 
-time_table = create_time_table()
-
+# All variables needed for correct data interpretation
+# height variable means length of classes
 t1 = 34  # 1h
 t2 = 56  # 1,5h
 t3 = 90  # 2h
 
 t4 = 124  # 2,5h
-t41 = 123
+t41 = 123 # 2,5h
+
+# width , how many groups
+one__grp = 76
+four_grp = 340
 
 # which group
 grp1 = 88
@@ -98,12 +113,13 @@ grpB1_saturday = grpA2_saturday + grp1
 grpB2_saturday = grpB1_saturday + grp1
 
 # sunday
-grpA1_sunday = 0
+grpA1_sunday = 1144
 grpA2_sunday = grpA1_sunday + grp1
 grpB1_sunday = grpA2_sunday + grp1
 grpB2_sunday = grpB1_sunday + grp1
 
-
+# Scraped data storage
+time_table = create_time_table()
 friday = []
 saturday = []
 sunday = []
@@ -112,15 +128,17 @@ sunday = []
 url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&w=46&winW=1584&winH=354&loadBG=000000'
 # url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&w=36&bw=0&winW=1584&winH=720&loadBG=000000'
 
+
+# Actual scraping
 data = requests.get(url)
 soup = BeautifulSoup(data.content, 'html.parser')
 parsed = soup.prettify()
 
-with open('plan.html', 'wb') as fout:
-    fout.write(parsed.encode('utf8'))
-
 tags_id = soup.find_all('div', class_='coursediv')
-
+"""
+This for loop below is very specially tailored to handle very ugly source code from website.
+Aka Main Loop () 
+"""
 for id in tags_id:
     if id.get_text().rstrip('\n') and id.get('style'):
         tags_id_a = id.find_all('a')
@@ -150,7 +168,13 @@ for id in tags_id:
         """
 
         if coordinates['left'] == grpA1_friday:
-            friday.append(['A1', subject, tutor, room, coordinates])
+            if coordinates['width'] == one__grp:
+                friday.append(['A1', subject, tutor, room, coordinates])
+            elif coordinates['width'] == four_grp:
+                friday.append(['A1', subject, tutor, room, coordinates])
+                friday.append(['A2', subject, tutor, room, coordinates])
+                friday.append(['B1', subject, tutor, room, coordinates])
+                friday.append(['B2', subject, tutor, room, coordinates])
         if coordinates['left'] == grpA2_friday:
             friday.append(['A2', subject, tutor, room, coordinates])
         if coordinates['left'] == grpB1_friday:
@@ -159,13 +183,35 @@ for id in tags_id:
             friday.append(['B2', subject, tutor, room, coordinates])
 
         if coordinates['left'] == grpA1_saturday:
-            saturday.append(['A1', subject, tutor, room, coordinates])
+            if coordinates['width'] == one__grp:
+                saturday.append(['A1', subject, tutor, room, coordinates])
+            elif coordinates['width'] == four_grp:
+                saturday.append(['A1', subject, tutor, room, coordinates])
+                saturday.append(['A2', subject, tutor, room, coordinates])
+                saturday.append(['B1', subject, tutor, room, coordinates])
+                saturday.append(['B2', subject, tutor, room, coordinates])
         if coordinates['left'] == grpA2_saturday:
             saturday.append(['A2', subject, tutor, room, coordinates])
         if coordinates['left'] == grpB1_saturday:
             saturday.append(['B1', subject, tutor, room, coordinates])
         if coordinates['left'] == grpB2_saturday:
             saturday.append(['B2', subject, tutor, room, coordinates])
+
+        if coordinates['left'] == grpA1_sunday:
+            if coordinates['width'] == one__grp:
+                sunday.append(['A1', subject, tutor, room, coordinates])
+            elif coordinates['width'] == four_grp:
+                sunday.append(['A1', subject, tutor, room, coordinates])
+                sunday.append(['A2', subject, tutor, room, coordinates])
+                sunday.append(['B1', subject, tutor, room, coordinates])
+                sunday.append(['B2', subject, tutor, room, coordinates])
+        if coordinates['left'] == grpA2_sunday:
+            sunday.append(['A2', subject, tutor, room, coordinates])
+        if coordinates['left'] == grpB1_sunday:
+            sunday.append(['B1', subject, tutor, room, coordinates])
+        if coordinates['left'] == grpB2_sunday:
+            sunday.append(['B2', subject, tutor, room, coordinates])
+
 
 """
 At this point I have data scraped. Now I have to sort it out and then display data in nice format.
@@ -228,19 +274,39 @@ friday_sorted = sort_data(friday)
 saturday_sorted = sort_data(saturday)
 sunday_sorted = sort_data(sunday)
 
-friday_sorted_by_grp = sort_day_by_grp(friday, 'A1')
+current_grp = 'A1'
+
+friday_sorted_by_grp = sort_day_by_grp(friday, current_grp)
 friday_sorted_by_grp = clean_results(friday_sorted_by_grp)
 
-saturday_sorted_by_grp = sort_day_by_grp(saturday_sorted, 'A1')
+saturday_sorted_by_grp = sort_day_by_grp(saturday_sorted, current_grp)
 saturday_sorted_by_grp = clean_results(saturday_sorted_by_grp)
 
-for lesson in friday_sorted_by_grp:
-    print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+sunday_sorted_by_grp = sort_day_by_grp(sunday_sorted, current_grp)
+sunday_sorted_by_grp = clean_results(sunday_sorted_by_grp)
 
-print('-' * 40)
 
-for lesson in saturday_sorted_by_grp:
-    print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+# Display the results
 
+with open('schedule.txt', 'w')as fout:
+    fout.write('FRIDAY:\n')
+    for lesson in friday_sorted_by_grp:
+        print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+        fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
+
+    fout.write('SATURDAY:\n')
+    for lesson in saturday_sorted_by_grp:
+        print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+        fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
+
+    fout.write('SUNDAY:\n')
+    for lesson in sunday_sorted_by_grp:
+        print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+        fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
+
+
+# ------------ measure time
 t00 = time.clock()
 print('time', t00 - t0)
+
+# the end
