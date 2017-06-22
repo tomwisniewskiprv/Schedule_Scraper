@@ -11,6 +11,12 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
+# TODO
+""" 
+    MEMO: 22.06.2017 
+    There few things to finish in this script. First of all code should be closed in functions. 
+    Second thing is group selection. It should not be hardcoded. ! change this asap.
+"""
 
 # ------------ measure time
 t0 = time.clock()
@@ -30,7 +36,7 @@ def calculate_top_cord_for_hour(h, top_cord, top_jump):
 
     for i in range(4):
         if i % 4 == 0:
-            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))  
+            time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))
             time_cod = top_cord
         if i % 4 == 1:
             time_str = '{:0>2}:{:0<2}'.format((str(h)), str(i * 15))
@@ -82,7 +88,7 @@ teachers = { 'MCh': 'Marcin Cholewa',
              }
 
 # All variables needed for correct data interpretation
-# height variable means length of classes
+# height variable means duration
 t1 = 34  # 1h
 t2 = 56  # 1,5h
 t3 = 90  # 2h
@@ -124,10 +130,8 @@ friday = []
 saturday = []
 sunday = []
 
-# url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&w=36&bw=0&winW=1584&winH=720&loadBG=000000'
-url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&w=46&winW=1584&winH=354&loadBG=000000'
-# url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&w=36&bw=0&winW=1584&winH=720&loadBG=000000'
-
+# Website URL, it will return current week automatically
+url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&winW=1584&winH=354&loadBG=000000'
 
 # Actual scraping
 data = requests.get(url)
@@ -136,7 +140,7 @@ parsed = soup.prettify()
 
 tags_id = soup.find_all('div', class_='coursediv')
 """
-This for loop below is very specially tailored to handle very ugly source code from website.
+This for loop below is specially tailored to handle ugly source code from website.
 Aka Main Loop () 
 """
 for id in tags_id:
@@ -214,9 +218,8 @@ for id in tags_id:
 
 
 """
-At this point I have data scraped. Now I have to sort it out and then display data in nice format.
+At this point all data is collected. Now I have to sort it out and then display data in nice format.
 """
-
 
 def sort_data(data):
     """
@@ -270,11 +273,13 @@ def clean_results(data):
     return cleaned
 
 
+# which group should be displayed ? # TODO it should be a parameter somewhere instead hardcoded value
+current_grp = 'B2'
+
+# Sort out results
 friday_sorted = sort_data(friday)
 saturday_sorted = sort_data(saturday)
 sunday_sorted = sort_data(sunday)
-
-current_grp = 'A1'
 
 friday_sorted_by_grp = sort_day_by_grp(friday, current_grp)
 friday_sorted_by_grp = clean_results(friday_sorted_by_grp)
@@ -287,19 +292,21 @@ sunday_sorted_by_grp = clean_results(sunday_sorted_by_grp)
 
 
 # Display the results
-
 with open('schedule.txt', 'w')as fout:
     fout.write('FRIDAY:\n')
+    print('FRIDAY:')
     for lesson in friday_sorted_by_grp:
-        print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
+        print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0], ''))
         fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
 
     fout.write('SATURDAY:\n')
+    print('SATURDAY:')
     for lesson in saturday_sorted_by_grp:
         print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
         fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
 
     fout.write('SUNDAY:\n')
+    print('SUNDAY:')
     for lesson in sunday_sorted_by_grp:
         print(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
         fout.writelines('{} {} {} {}\n'.format(time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0])))
