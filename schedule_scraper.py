@@ -114,7 +114,7 @@ class ScheduleScraper(object):
                 """
                 MEMO :
                 Source code from website has bugs. Some entries are doubled or tripled. I had decided to deal with
-                redundant data in function clean_results which will work on data sorted by group.
+                redundant data in function remove_redundancy which will work on data sorted by group.
                 
                 I'm aware of this problem.
                 """
@@ -197,7 +197,7 @@ class ScheduleScraper(object):
 
         return result
 
-    def clean_results(self, data):
+    def remove_redundancy(self, data):
         """
         Clean results from redundant records.
         * function preserves order *
@@ -213,7 +213,7 @@ class ScheduleScraper(object):
 
         return cleaned
 
-    def clean_the_results(self):
+    def display_results(self):
 
         # Sort out results
         self.friday_sorted = self.sort_data(self.friday)
@@ -221,15 +221,14 @@ class ScheduleScraper(object):
         self.sunday_sorted = self.sort_data(self.sunday)
 
         # self.friday_sorted_by_grp = self.sort_day_by_grp(self.friday, current_grp)
-        self.friday_sorted_by_grp = self.clean_results(self.sort_day_by_grp(self.friday, self.group))
+        self.friday_sorted_by_grp = self.remove_redundancy(self.sort_day_by_grp(self.friday, self.group))
 
         self.saturday_sorted_by_grp = self.sort_day_by_grp(self.saturday_sorted, self.group)
-        self.saturday_sorted_by_grp = self.clean_results(self.saturday_sorted_by_grp)
+        self.saturday_sorted_by_grp = self.remove_redundancy(self.saturday_sorted_by_grp)
 
         self.sunday_sorted_by_grp = self.sort_day_by_grp(self.sunday_sorted, self.group)
-        self.sunday_sorted_by_grp = self.clean_results(self.sunday_sorted_by_grp)
+        self.sunday_sorted_by_grp = self.remove_redundancy(self.sunday_sorted_by_grp)
 
-    def display_results(self):
         print('FRIDAY:')
         for lesson in self.friday_sorted_by_grp:
             print(self.time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0], ''))
@@ -242,6 +241,9 @@ class ScheduleScraper(object):
         for lesson in self.sunday_sorted_by_grp:
             print(self.time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
 
+    def execute(self):
+        self.main()
+        self.display_results()
 
 teachers = {'MCh': 'Marcin Cholewa',
             'ASa': 'Arkadiusz Sacewicz',
@@ -277,7 +279,6 @@ grpA2_friday = grpA1_friday + grp
 grpB3_friday = grpA2_friday + grp
 grpB4_friday = grpB3_friday + grp
 
-print(grpB4_friday == grpA1_friday + 3 * grp)
 # saturday
 grpA1_saturday = 792
 grpA2_saturday = grpA1_saturday + grp
@@ -296,10 +297,7 @@ url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&winW=1584&winH=354&load
 # which group should be displayed ?
 which_grp = 'B4'
 
-# TODO: shorter execution
 ss = ScheduleScraper(url, which_grp)
-ss.main()
-ss.clean_the_results()
-ss.display_results()
+ss.execute()
 
 # the end
