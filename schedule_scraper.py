@@ -11,12 +11,6 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-""" 
-    MEMO: 22.06.2017 
-    There few things to finish in this script. First of all code should be closed in functions. 
-    Second thing is group selection. It should not be hardcoded. ! change this asap.
-"""
-
 
 class ScheduleScraper(object):
     def __init__(self, url, group):
@@ -220,14 +214,11 @@ class ScheduleScraper(object):
         self.saturday_sorted = self.sort_data(self.saturday)
         self.sunday_sorted = self.sort_data(self.sunday)
 
-        # self.friday_sorted_by_grp = self.sort_day_by_grp(self.friday, current_grp)
         self.friday_sorted_by_grp = self.remove_redundancy(self.sort_day_by_grp(self.friday, self.group))
 
-        self.saturday_sorted_by_grp = self.sort_day_by_grp(self.saturday_sorted, self.group)
-        self.saturday_sorted_by_grp = self.remove_redundancy(self.saturday_sorted_by_grp)
+        self.saturday_sorted_by_grp = self.remove_redundancy(self.sort_day_by_grp(self.saturday_sorted, self.group))
 
-        self.sunday_sorted_by_grp = self.sort_day_by_grp(self.sunday_sorted, self.group)
-        self.sunday_sorted_by_grp = self.remove_redundancy(self.sunday_sorted_by_grp)
+        self.sunday_sorted_by_grp = self.remove_redundancy(self.sort_day_by_grp(self.sunday_sorted, self.group))
 
         print('FRIDAY:')
         for lesson in self.friday_sorted_by_grp:
@@ -242,8 +233,14 @@ class ScheduleScraper(object):
             print(self.time_table[lesson[4]['top']], lesson[0], lesson[1], teachers.get(lesson[2][0]))
 
     def execute(self):
+        t0 = time.clock()
+
         self.main()
         self.display_results()
+
+        t1 = time.clock()
+        print('time of execution:', t1 - t0)
+
 
 teachers = {'MCh': 'Marcin Cholewa',
             'ASa': 'Arkadiusz Sacewicz',
@@ -297,7 +294,7 @@ url = 'http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&winW=1584&winH=354&load
 # which group should be displayed ?
 which_grp = 'B4'
 
-ss = ScheduleScraper(url, which_grp)
-ss.execute()
-
-# the end
+# execute
+if __name__ == "__main__":
+    ss = ScheduleScraper(url, which_grp)
+    ss.execute()
