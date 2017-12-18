@@ -105,6 +105,8 @@ class ScheduleScraper(object):
                     tmp_data = data.replace(' ', '').replace('px', '').split(':')
                     coordinates[tmp_data[0]] = int(tmp_data[1])
 
+                print(coordinates)
+
                 """
                 MEMO :
                 Source code from website has bugs. Some entries are doubled or tripled. I had decided to deal with
