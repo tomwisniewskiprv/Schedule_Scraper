@@ -51,11 +51,14 @@ GROUP_B4_sunday = GROUP_B3_sunday + COLUMN_GROUP_WIDTH
 
 class ScheduleScrapper(object):
     def __init__(self):
-        self._time_table = []
+        self._time_table = self.create_time_table()
         self._friday_schedule = []
         self._saturday_schedule = []
         self._sunday_schedule = []
         self._url = URL
+
+    def show_time_table(self):
+        return self._time_table
 
     def remove_redundancy(self, schedule_data):
         """Removes duplicates from data"""
@@ -71,49 +74,39 @@ class ScheduleScrapper(object):
         """
         Calculates coordinates from scraped data.
 
-        :param h: full hour
+        :param hour: full hour
         :param top_cord: initial value for top variable (scraped from website)
-        :param top_jump: height difference between nodes
+        :param height: height difference between nodes
         :return: list with tuples (coordinates, time)
         """
-        table = []
-        time_str = ""
+        result_table = []
+        formatted_time = ""
         time_cords = 0
 
-        for i in range(4):
-            if i % 4 == 0:
-                time_str = '{:0>2}:{:0<2}'.format((str(hour)), str(i * 15))
-                time_cords = height
-            if i % 4 == 1:
-                time_str = '{:0>2}:{:0<2}'.format((str(hour)), str(i * 15))
-                time_cords = top_cord + height
-            if i % 4 == 2:
-                time_str = '{:0>2}:{:0<2}'.format((str(hour)), str(i * 15))
-                time_cords = top_cord + 2 * height
-            if i % 4 == 3:
-                time_str = '{:0>2}:{:0<2}'.format((str(hour)), str(i * 15))
-                time_cords = top_cord + 3 * height
+        for multiplier in range(4):
+            formatted_time = '{:0>2}:{:0<2}'.format((str(hour)), str(multiplier * 15))
+            time_cords = top_cord + height * multiplier
 
-            table.append([time_cords, time_str])
+            result_table.append([time_cords, formatted_time])
 
         next_hour_cords = top_cord + 4 * height + 1
-        return table, next_hour_cords  # table, next hour's coordinates
+        return result_table, next_hour_cords  # table, next hour's coordinates
 
     def create_time_table(self):
         """
         Creates time table as dictionary.
-        :return: dictionary with time intervals (15 min)
+        :return: dictionary with time intervals and according coordinates(15 min each)
         """
         time_table = {}
         first_full_hour = 8  # 8:00
         last_full_hour = 22  # last hour 21:00
         hour_cords = 282  # initial value for 8:00
-        height_diff = 11  # height difference between nodes
+        height_diff = 11  # height difference between nodes (each is equal to 15 min)
 
         for i in range(first_full_hour, last_full_hour):
-            tmp_tab, hour_cords = self.calculate_top_hour_cords(i, hour_cords, height_diff)
-            d = dict(tmp_tab)
-            time_table.update(d)
+            full_hour, hour_cords = self.calculate_top_hour_cords(i, hour_cords, height_diff)
+            full_hour = dict(full_hour)
+            time_table.update(full_hour)
 
         return time_table
 
@@ -262,6 +255,7 @@ class ScheduleScrapper(object):
 def main():
     scrapper = ScheduleScrapper()
     scrapper.scrap()
+    print(scrapper.show_time_table())
 
 
 if __name__ == "__main__":
