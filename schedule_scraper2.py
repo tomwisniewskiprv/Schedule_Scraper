@@ -6,15 +6,15 @@
 # 17.12.2017 Tomasz Wisniewski
 
 import requests
-import re
 from bs4 import BeautifulSoup
 
 # CONSTANTS
 
 # Website's URL, it will return schedule table for current week
 URL = "http://plan.ii.us.edu.pl/plan.php?type=2&id=23805&winW=1584&winH=354&loadBG=000000"
-WEEK = "&w=4"
-URL += WEEK
+WEEK_PARAM = "&w="
+WEEK = "16"
+URL += WEEK_PARAM + WEEK
 
 # Height variable means duration
 HEIGHT_TIME_1h = 34  # 1h
@@ -51,17 +51,78 @@ GROUP_B4_sunday = GROUP_B3_sunday + COLUMN_GROUP_WIDTH
 
 class ScheduleScrapper(object):
     def __init__(self):
-        self._time_table = self.create_time_table()
+        self._time_table = self._create_time_table()
         self._friday_schedule = []
         self._saturday_schedule = []
         self._sunday_schedule = []
         self._url = URL
 
-    def show_time_table(self):
-        return self._time_table
+        self._get_page_content()
 
-    def remove_redundancy(self, schedule_data):
-        """Removes duplicates from data"""
+        self._numbered_weeks = {}
+        self._current_week = ""
+
+        self._teachers = {'MCh': 'Marcin Cholewa',
+                          'ASa': 'Arkadiusz Sacewicz',
+                          'PP': 'Piotr Paszek',
+                          'PG': 'Paweł Gładki',
+                          'MB': 'Barbara M. Paszek',
+                          'MaPa': 'Małgorzata Pałys',
+                          'LA': 'Aleksander Lamża',
+                          'TK': 'Katarzyna Trynda',
+                          'KP': 'Przemysław Kudłacik',
+                          'EK-W': 'Ewa Karolczak-Wawrzała',
+                          'BM': 'Boryczka Mariusz',
+
+                          'ŚM': 'Maciej Ślęczka',
+                          'AB': 'Anna Bień',
+                          'AH-K': 'Aneta Hanc-Kuczkowska',
+                          'PJa': 'Paweł Janik',
+                          'BPł': 'Bartłomiej Płaczek',
+                          'BR': 'Romuald Błaszczyk',
+                          'KSt': 'Kazimierz Stróż',
+                          'CM': 'Miłosław Chodacki',
+                          }
+
+    def _get_page_content(self):
+        """
+        Function requests and loads web content.
+        It should be used during initialisation of scraper object.
+        """
+        try:
+            self._web_page = requests.get(self._url)
+        except Exception as error:
+            with open("error_log.txt", "a") as log:
+                log.write(str(error) + "\n")
+
+        soup = BeautifulSoup(self._web_page.content, 'html.parser')
+        select_tag = soup.find_all('select', id='wBWeek')
+
+        values_weeks = []
+        for options in select_tag:
+            option = options.find_all('option')
+
+            for week in option:
+                values_weeks.append((week.get('value'), week.get_text()))
+
+        self._numbered_weeks = dict(values_weeks)
+        self._current_week = self._numbered_weeks.get(WEEK)
+        # debug
+        print("Schedule for week : ", self._current_week)
+
+    def load_numbered_weeks(self):
+        """Returns weeks and corresponding numbers as dictionary"""
+        return self._numbered_weeks
+
+    # debug
+    def _show_time_table(self):
+        print(self._time_table)
+
+    def _remove_redundancy(self, schedule_data):
+        """
+        Removes duplicates from scrapped data because some data blocks have more then one layer
+        describing one data block, so this function is a must.
+        """
         cleaned = []
 
         for record in schedule_data:
@@ -70,7 +131,7 @@ class ScheduleScrapper(object):
 
         return cleaned
 
-    def calculate_top_hour_cords(self, hour, top_cord, height):
+    def _calculate_top_hour_cords(self, hour, top_cord, height):
         """
         Calculates coordinates from scraped data.
 
@@ -92,7 +153,7 @@ class ScheduleScrapper(object):
         next_hour_cords = top_cord + 4 * height + 1
         return result_table, next_hour_cords  # table, next hour's coordinates
 
-    def create_time_table(self):
+    def _create_time_table(self):
         """
         Creates time table as dictionary.
         :return: dictionary with time intervals and according coordinates(15 min each)
@@ -103,8 +164,8 @@ class ScheduleScrapper(object):
         hour_cords = 282  # initial value for 8:00
         height_diff = 11  # height difference between nodes (each is equal to 15 min)
 
-        for i in range(first_full_hour, last_full_hour):
-            full_hour, hour_cords = self.calculate_top_hour_cords(i, hour_cords, height_diff)
+        for hour in range(first_full_hour, last_full_hour):
+            full_hour, hour_cords = self._calculate_top_hour_cords(hour, hour_cords, height_diff)
             full_hour = dict(full_hour)
             time_table.update(full_hour)
 
@@ -124,8 +185,7 @@ class ScheduleScrapper(object):
         soup = None
 
         try:
-            web_page = requests.get(self._url)
-            soup = BeautifulSoup(web_page.content, "html.parser")
+            soup = BeautifulSoup(self._web_page.content, "html.parser")
 
         except Exception as error:
             with open("error_log.txt", "a") as log:
@@ -142,6 +202,9 @@ class ScheduleScrapper(object):
             del lecture_info[0]
             lecture_info.insert(0, lecture_name_and_type[0])
             lecture_info.insert(1, lecture_name_and_type[1].strip())
+
+            if len(lecture_info) < 4:
+                lecture_info.append("Brak sali")
 
             # Extract data rectangle coordinates
             end_of_cords = div_tag.get("style").find("border")
@@ -242,20 +305,86 @@ class ScheduleScrapper(object):
                     ["B4", lecture_info[0], lecture_info[1], lecture_info[2], lecture_info[3], coordinates])
 
         # Remove redundancy
-        self._friday_schedule = self.remove_redundancy(self._friday_schedule)
-        self._saturday_schedule = self.remove_redundancy(self._saturday_schedule)
-        self._sunday_schedule = self.remove_redundancy(self._sunday_schedule)
+        self._friday_schedule = self._remove_redundancy(self._friday_schedule)
+        self._saturday_schedule = self._remove_redundancy(self._saturday_schedule)
+        self._sunday_schedule = self._remove_redundancy(self._sunday_schedule)
 
         # Sort results by group
         self._friday_schedule = sorted(self._friday_schedule, key=lambda x: x[0])
         self._saturday_schedule = sorted(self._saturday_schedule, key=lambda x: x[0])
         self._sunday_schedule = sorted(self._sunday_schedule, key=lambda x: x[0])
 
+    def _order_results_by_group(self, scraped_data, wanted_group):
+        results = []
+        for lecture in scraped_data:
+            if lecture[0] == wanted_group:
+                results.append(lecture)
+
+        results = sorted(results, key=lambda x: x[5]["top"])
+        return results
+
+    def get_schedule_for_group(self, wanted_group):
+        """ Sorts data to correct order and format
+            :returns sorted list # TODO for now
+        """
+
+        schedule = []
+
+        friday_schedule = self._order_results_by_group(self._friday_schedule, wanted_group)
+        saturday_schedule = self._order_results_by_group(self._saturday_schedule, wanted_group)
+        sunday_schedule = self._order_results_by_group(self._sunday_schedule, wanted_group)
+
+        # Friday
+        schedule.append("FRIDAY")
+        for lecture in friday_schedule:
+            teacher = self._teachers.get(lecture[3])
+            duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 12)
+            if duration is None:
+                duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 11)
+            formatted = "{:5} {:5} {:<5} {:<10} {:<15}".format(self._time_table[lecture[5]["top"]],
+                                                               duration,
+                                                               lecture[0], lecture[1], teacher)
+
+            schedule.append(formatted)
+
+        # Saturday
+        schedule.append("SATURDAY")
+        for lecture in saturday_schedule:
+            teacher = self._teachers.get(lecture[3])
+            duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 12)
+            if duration is None:
+                duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 11)
+            formatted = "{:5} {:5} {:<5} {:<10} {:<15}".format(self._time_table[lecture[5]["top"]],
+                                                               duration,
+                                                               lecture[0], lecture[1], teacher)
+
+            schedule.append(formatted)
+
+        # Sunday
+        schedule.append("SUNDAY")
+        for lecture in sunday_schedule:
+            teacher = self._teachers.get(lecture[3])
+            duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 12)
+            if duration is None:
+                duration = self._time_table.get(lecture[5]["height"] + lecture[5]["top"] + 11)
+            formatted = "{:5} {:5} {:<5} {:<10} {:<15}".format(self._time_table[lecture[5]["top"]],
+                                                               duration,
+                                                               lecture[0], lecture[1], teacher)
+
+            schedule.append(formatted)
+
+        return schedule
+
+    def show_schedule_for_group(self, group):
+        # DEBUG
+        for x in self.get_schedule_for_group(group):
+            print(x)
+
 
 def main():
     scrapper = ScheduleScrapper()
     scrapper.scrap()
-    print(scrapper.show_time_table())
+    scrapper.show_schedule_for_group("A1")
 
 
 if __name__ == "__main__":
