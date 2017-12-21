@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-    schedule_scraper.py
+    schedule_scraper_Deprecated.py
 
     Script scrapes web page content for schedule.
 
     Python 3.6
+
     10.06.2017 Tomasz Wisniewski
+
+
+    Deprecated !!!!!
+    This version is no longer supported.
 """
 import time
 import requests
